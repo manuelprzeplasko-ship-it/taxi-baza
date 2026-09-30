@@ -10,8 +10,8 @@
 <section class="actions"><button id="start" class="btn start">▶ START KURSU</button><button id="stop" class="btn stop" disabled>■ ZAKOŃCZ</button><button id="reset" class="btn dark full">↻ NOWY KURS / WYCZYŚĆ</button></section>
 <section class="panel"><div class="ey">Taryfa</div><button class="tariff active" data-id="1">1 • Dzienna 6–22<br><small>8 zł + 4 zł/km</small></button><button class="tariff" data-id="2">2 • Nocna 22–6, Święta i niedziele<br><small>8 zł + 5 zł/km</small></button><button class="tariff" data-id="3">3 • BMW premium<br><small>30 zł + 6 zł/km</small></button></section>
 <section class="panel grid"><div class="stat"><span class="ey">Taryfa</span><b id="tariffName"></b></div><div class="stat"><span class="ey">Czas</span><b id="timer">00:00:00</b></div><div class="stat"><span class="ey">Start GPS</span><b id="startGps">—</b></div><div class="stat"><span class="ey">Koniec GPS</span><b id="endGps">—</b></div></section></section>
-<section id="adminView" class="hide"><section class="panel"><div class="ey">Panel administratora</div><div class="field"><label>PIN administratora</label><input id="adminPin" type="password" inputmode="numeric"><button id="adminLogin" class="btn start" style="width:100%;margin-top:8px">WEJDŹ</button></div><div id="adminContent" class="hide"><div class="notice">V1.1: kursy kierowców zapisują się już we wspólnej bazie Supabase. Zarządzanie online i usuwanie kursów z chmury dodamy w kolejnym kroku.</div><div class="tabs"><button class="mini" data-tab="courses">Kursy</button><button class="mini" data-tab="drivers">Kierowcy</button><button class="mini" data-tab="vehicles">Pojazdy</button></div><div id="coursesTab"><button id="clearTest" class="btn danger" style="width:100%;margin-bottom:10px">USUŃ WSZYSTKIE KURSY TESTOWE</button><div class="tablewrap"><table class="history"><thead><tr><th>Data</th><th>Kierowca</th><th>Pojazd</th><th>km</th><th>Kwota</th><th>Start GPS</th><th>Koniec GPS</th><th></th></tr></thead><tbody id="courseRows"></tbody></table></div></div><div id="driversTab" class="hide"><div class="row"><input id="newDriverName" placeholder="Imię i nazwisko"><input id="newDriverPin" placeholder="PIN" inputmode="numeric"><button id="addDriver" class="mini">Dodaj</button></div><div id="driversList"></div></div><div id="vehiclesTab" class="hide"><div class="row"><input id="newVehicle" placeholder="np. Toyota Corolla KR 1234A"><button id="addVehicle" class="mini">Dodaj</button></div><div id="vehiclesList"></div></div><button id="adminClose" class="btn dark" style="width:100%;margin-top:12px">ZAMKNIJ PANEL</button></div></section></section>
-<p class="note">V1 testowa zapisuje dane lokalnie na urządzeniu. Po podłączeniu Supabase te same ekrany mogą zapisywać kursy wspólnie dla wszystkich telefonów.</p></main>
+<section id="adminView" class="hide"><section class="panel"><div class="ey">Panel administratora</div><div class="field"><label>PIN administratora</label><input id="adminPin" type="password" inputmode="numeric"><button id="adminLogin" class="btn start" style="width:100%;margin-top:8px">WEJDŹ</button></div><div id="adminContent" class="hide"><div class="notice">V1.2 • Panel administratora online</div><div class="tabs"><button class="mini" data-tab="courses">Kursy</button><button class="mini" data-tab="drivers">Kierowcy</button><button class="mini" data-tab="vehicles">Pojazdy</button></div><div id="coursesTab"><div class="tablewrap"><table class="history"><thead><tr><th>Data</th><th>Kierowca</th><th>Pojazd</th><th>km</th><th>Kwota</th><th>Start GPS</th><th>Koniec GPS</th><th></th></tr></thead><tbody id="courseRows"></tbody></table></div></div><div id="driversTab" class="hide"><div class="row"><input id="newDriverName" placeholder="Imię i nazwisko"><input id="newDriverPin" placeholder="PIN" inputmode="numeric"><button id="addDriver" class="mini">Dodaj</button></div><div id="driversList"></div></div><div id="vehiclesTab" class="hide"><div class="row"><input id="newVehicle" placeholder="np. Toyota Corolla"><input id="newRegistration" placeholder="Rejestracja"><button id="addVehicle" class="mini">Dodaj</button></div><div id="vehiclesList"></div></div><button id="adminClose" class="btn dark" style="width:100%;margin-top:12px">ZAMKNIJ PANEL</button></div></section></section>
+<p class="note">PIKER V1.2 • Kursy, kierowcy i pojazdy są synchronizowane ze wspólną bazą Supabase.</p></main>
 <script>
 const tariffs={1:{name:'Dzienna 6–22',base:8,rate:4},2:{name:'Nocna 22–6, Święta i niedziele',base:8,rate:5},3:{name:'BMW premium',base:30,rate:6}};const $=x=>document.getElementById(x),money=n=>n.toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2});
 const DBKEY='piker-v1-db',STATE='piker-v1-state';let db=JSON.parse(localStorage.getItem(DBKEY)||'null')||{drivers:[{id:1,name:'Kierowca testowy',pin:'1111',active:true}],vehicles:[{id:1,name:'Auto testowe',status:'active'}],courses:[]};let currentDriver=null,tariffId=1,running=false,finished=false,watchId=null,lastPoint=null,startPoint=null,endPoint=null,km=0,startedAt=null,timerId=null;
@@ -33,7 +33,7 @@ async function cloudVehicles(){
   dbsave(); loadVehicles();
 }
 
-function persist(){localStorage.setItem(DBKEY,JSON.stringify(db));localStorage.setItem(STATE,JSON.stringify({currentDriverId:currentDriver?.id,tariffId,running,finished,lastPoint,startPoint,endPoint,km,startedAt,vehicleId:+$('vehicleSelect').value||null}))}function dbsave(){localStorage.setItem(DBKEY,JSON.stringify(db))}
+function persist(){localStorage.setItem(DBKEY,JSON.stringify(db));localStorage.setItem(STATE,JSON.stringify({currentDriver:currentDriver?{id:currentDriver.id,name:currentDriver.name}:null,tariffId,running,finished,lastPoint,startPoint,endPoint,km,startedAt,vehicleId:$('vehicleSelect').value||null}))}function dbsave(){localStorage.setItem(DBKEY,JSON.stringify(db))}
 function activeVehicles(){return db.vehicles.filter(v=>v.status==='active')}function loadVehicles(sel){const old=sel||+$('vehicleSelect').value;$('vehicleSelect').innerHTML='<option value="">— wybierz pojazd —</option>'+activeVehicles().map(v=>`<option value="${v.id}">${v.name}</option>`).join('');if(old)$('vehicleSelect').value=old;updateCar()}
 function updateCar(){const v=db.vehicles.find(x=>String(x.id)===$('vehicleSelect').value);$('carName').textContent=v?.name||'—'}$('vehicleSelect').onchange=()=>{updateCar();persist()};
 function showDriver(d){currentDriver=d;$('loginView').classList.add('hide');$('adminView').classList.add('hide');$('driverView').classList.remove('hide');$('driverName').textContent=d.name;loadVehicles();update();sync()}
@@ -43,8 +43,145 @@ function dist(a,b){const R=6371,rad=x=>x*Math.PI/180,dLat=rad(b.lat-a.lat),dLon=
 $('start').onclick=()=>{if(!$('vehicleSelect').value)return alert('Wybierz pojazd.');if(!navigator.geolocation)return alert('Brak obsługi GPS.');running=true;finished=false;km=0;lastPoint=startPoint=endPoint=null;startedAt=Date.now();sync();tick();timerId=setInterval(tick,1000);startGpsWatch();$('status').textContent='Uruchamianie GPS…';persist();update()};
 $('stop').onclick=async()=>{running=false;finished=true;stopGpsWatch();clearInterval(timerId);const vehicle=db.vehicles.find(v=>String(v.id)===$('vehicleSelect').value);if(!vehicle){alert('Nie znaleziono wybranego pojazdu.');running=true;finished=false;sync();startGpsWatch();return;}const endedAt=Date.now(),finalFare=+fare().toFixed(2);sync();$('status').textContent='Zapisywanie kursu…';try{const id=await rpc('piker_save_course',{p_driver_id:currentDriver.id,p_vehicle_id:vehicle.id,p_started_at:new Date(startedAt).toISOString(),p_ended_at:new Date(endedAt).toISOString(),p_distance_km:+km.toFixed(3),p_fare:finalFare,p_tariff_id:tariffId,p_tariff_name:tariffs[tariffId].name,p_start_lat:startPoint?.lat??null,p_start_lng:startPoint?.lng??null,p_end_lat:endPoint?.lat??null,p_end_lng:endPoint?.lng??null});db.courses.unshift({id:id||String(Date.now()),driverId:currentDriver.id,driver:currentDriver.name,vehicleId:vehicle.id,vehicle:vehicle.name,tariff:tariffs[tariffId].name,startedAt,endedAt,km:+km.toFixed(3),fare:finalFare,startPoint,endPoint,test:false});dbsave();$('status').textContent='Kurs zakończony i zapisany w bazie ✓'}catch(e){console.error(e);finished=false;running=true;sync();startGpsWatch();timerId=setInterval(tick,1000);$('status').textContent='Błąd zapisu do bazy — kurs nadal trwa';alert('Nie udało się zapisać kursu do bazy. Sprawdź internet i spróbuj ZAKOŃCZ ponownie.');return}persist();update()};
 $('reset').onclick=()=>{stopGpsWatch();clearInterval(timerId);running=finished=false;lastPoint=startPoint=endPoint=null;km=0;startedAt=null;$('timer').textContent='00:00:00';$('status').textContent='Gotowy do nowego kursu';sync();persist();update()};
-$('adminOpen').onclick=()=>{$('loginView').classList.add('hide');$('adminView').classList.remove('hide')};$('adminLogin').onclick=()=>{if($('adminPin').value!=='2026')return alert('Nieprawidłowy PIN administratora.');$('adminContent').classList.remove('hide');renderAdmin()};$('adminClose').onclick=()=>{$('adminView').classList.add('hide');$('loginView').classList.remove('hide');$('adminContent').classList.add('hide');$('adminPin').value=''};
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{['courses','drivers','vehicles'].forEach(x=>$(x+'Tab').classList.toggle('hide',x!==b.dataset.tab));renderAdmin()});function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function renderAdmin(){ $('courseRows').innerHTML=db.courses.map(c=>`<tr><td>${new Date(c.endedAt).toLocaleString('pl-PL')}</td><td>${esc(c.driver)}</td><td>${esc(c.vehicle)}</td><td>${c.km.toFixed(3)}</td><td>${money(c.fare)} zł</td><td>${c.startPoint?c.startPoint.lat.toFixed(5)+', '+c.startPoint.lng.toFixed(5):'—'}</td><td>${c.endPoint?c.endPoint.lat.toFixed(5)+', '+c.endPoint.lng.toFixed(5):'—'}</td><td><button class="mini danger" onclick="deleteCourse('${c.id}')">Usuń</button></td></tr>`).join('')||'<tr><td colspan="8">Brak kursów</td></tr>'; $('driversList').innerHTML=db.drivers.map(d=>`<div class="row" style="margin-top:8px"><span>${esc(d.name)} • PIN ${esc(d.pin)}</span><button class="mini" onclick="toggleDriver(${d.id})">${d.active?'Dezaktywuj':'Aktywuj'}</button></div>`).join('');$('vehiclesList').innerHTML=db.vehicles.map(v=>`<div class="row" style="margin-top:8px"><span>${esc(v.name)} • ${v.status}</span><select onchange="vehicleStatus(${v.id},this.value)"><option value="active" ${v.status==='active'?'selected':''}>Aktywny</option><option value="service" ${v.status==='service'?'selected':''}>Serwis</option><option value="inactive" ${v.status==='inactive'?'selected':''}>Nieaktywny</option></select></div>`).join('')}
-window.deleteCourse=id=>{if(confirm('Usunąć ten kurs z historii? Tej operacji nie można cofnąć.')){db.courses=db.courses.filter(c=>c.id!==id);dbsave();renderAdmin()}};$('clearTest').onclick=()=>{if(confirm('Usunąć WSZYSTKIE kursy testowe?')){db.courses=db.courses.filter(c=>!c.test);dbsave();renderAdmin()}};window.toggleDriver=id=>{const d=db.drivers.find(x=>x.id===id);d.active=!d.active;dbsave();renderAdmin()};window.vehicleStatus=(id,s)=>{db.vehicles.find(x=>x.id===id).status=s;dbsave();renderAdmin();loadVehicles()};$('addDriver').onclick=()=>{const name=$('newDriverName').value.trim(),pin=$('newDriverPin').value.trim();if(!name||!pin)return alert('Podaj nazwę i PIN.');if(db.drivers.some(d=>d.pin===pin))return alert('PIN musi być unikalny.');db.drivers.push({id:Date.now(),name,pin,active:true});dbsave();$('newDriverName').value=$('newDriverPin').value='';renderAdmin()};$('addVehicle').onclick=()=>{const name=$('newVehicle').value.trim();if(!name)return;db.vehicles.push({id:Date.now(),name,status:'active'});dbsave();$('newVehicle').value='';renderAdmin()};
-try{const s=JSON.parse(localStorage.getItem(STATE)||'null');if(s){tariffId=s.tariffId||1;running=!!s.running;finished=!!s.finished;lastPoint=s.lastPoint;startPoint=s.startPoint;endPoint=s.endPoint;km=+s.km||0;startedAt=s.startedAt;const d=db.drivers.find(x=>x.id===s.currentDriverId);if(d){showDriver(d);loadVehicles(s.vehicleId);if(running){tick();timerId=setInterval(tick,1000);startGpsWatch()}sync()}}}catch(e){}update();sync();
+
+let adminSessionPin='';
+
+$('adminOpen').onclick=()=>{
+  $('loginView').classList.add('hide');
+  $('adminView').classList.remove('hide');
+};
+
+$('adminLogin').onclick=async()=>{
+  const pin=$('adminPin').value.trim();
+  if(!pin)return;
+  $('adminLogin').disabled=true;
+  $('adminLogin').textContent='ŁĄCZENIE…';
+  try{
+    const ok=await rpc('piker_admin_login',{p_pin:pin});
+    if(!ok) throw new Error('Nieprawidłowy PIN');
+    adminSessionPin=pin;
+    $('adminContent').classList.remove('hide');
+    await renderAdmin();
+  }catch(e){
+    console.error(e);
+    alert('Nieprawidłowy PIN administratora.');
+  }finally{
+    $('adminLogin').disabled=false;
+    $('adminLogin').textContent='WEJDŹ';
+  }
+};
+
+$('adminClose').onclick=()=>{
+  adminSessionPin='';
+  $('adminView').classList.add('hide');
+  $('loginView').classList.remove('hide');
+  $('adminContent').classList.add('hide');
+  $('adminPin').value='';
+};
+
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=async()=>{
+  ['courses','drivers','vehicles'].forEach(x=>$(x+'Tab').classList.toggle('hide',x!==b.dataset.tab));
+  await renderAdmin();
+});
+
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function fmtGps(lat,lng){return lat!=null&&lng!=null?Number(lat).toFixed(5)+', '+Number(lng).toFixed(5):'—'}
+
+async function renderAdmin(){
+  if(!adminSessionPin)return;
+  try{
+    const [courses,drivers,vehicles]=await Promise.all([
+      rpc('piker_admin_courses',{p_admin_pin:adminSessionPin}),
+      rpc('piker_admin_drivers',{p_admin_pin:adminSessionPin}),
+      rpc('piker_admin_vehicles',{p_admin_pin:adminSessionPin})
+    ]);
+    db.courses=courses||[];
+    db.drivers=drivers||[];
+    db.vehicles=(vehicles||[]).map(v=>({...v,registration:v.registration||''}));
+    dbsave();
+
+    $('courseRows').innerHTML=db.courses.map(c=>`<tr>
+      <td>${new Date(c.ended_at).toLocaleString('pl-PL')}</td>
+      <td>${esc(c.driver_name)}</td>
+      <td>${esc(c.vehicle_name)}</td>
+      <td>${Number(c.distance_km||0).toFixed(3)}</td>
+      <td>${money(Number(c.fare||0))} zł</td>
+      <td>${fmtGps(c.start_lat,c.start_lng)}</td>
+      <td>${fmtGps(c.end_lat,c.end_lng)}</td>
+      <td><button class="mini danger" onclick="deleteCourse('${c.id}')">Usuń</button></td>
+    </tr>`).join('')||'<tr><td colspan="8">Brak kursów</td></tr>';
+
+    $('driversList').innerHTML=db.drivers.map(d=>`<div class="row" style="margin-top:8px">
+      <span>${esc(d.name)} • ${d.active?'Aktywny':'Nieaktywny'}</span>
+      <button class="mini" onclick="changeDriverPin('${d.id}')">Zmień PIN</button>
+      <button class="mini" onclick="toggleDriver('${d.id}',${!d.active})">${d.active?'Dezaktywuj':'Aktywuj'}</button>
+    </div>`).join('')||'<div class="note">Brak kierowców</div>';
+
+    $('vehiclesList').innerHTML=db.vehicles.map(v=>`<div class="row" style="margin-top:8px">
+      <span>${esc(v.name)}${v.registration?' • '+esc(v.registration):''}</span>
+      <select onchange="vehicleStatus('${v.id}',this.value)">
+        <option value="active" ${v.status==='active'?'selected':''}>Aktywny</option>
+        <option value="service" ${v.status==='service'?'selected':''}>Serwis</option>
+        <option value="inactive" ${v.status==='inactive'?'selected':''}>Nieaktywny</option>
+      </select>
+    </div>`).join('')||'<div class="note">Brak pojazdów</div>';
+  }catch(e){
+    console.error(e);
+    alert('Nie udało się pobrać danych panelu administratora.');
+  }
+}
+
+window.deleteCourse=async id=>{
+  if(!confirm('Usunąć ten kurs z historii? Tej operacji nie można cofnąć.'))return;
+  try{
+    await rpc('piker_admin_delete_course',{p_admin_pin:adminSessionPin,p_course_id:id});
+    await renderAdmin();
+  }catch(e){console.error(e);alert('Nie udało się usunąć kursu.')}
+};
+
+window.toggleDriver=async(id,active)=>{
+  try{
+    await rpc('piker_admin_driver_status',{p_admin_pin:adminSessionPin,p_driver_id:id,p_active:active});
+    await renderAdmin();
+  }catch(e){console.error(e);alert('Nie udało się zmienić statusu kierowcy.')}
+};
+
+window.changeDriverPin=async id=>{
+  const pin=prompt('Podaj nowy PIN kierowcy (minimum 4 znaki):');
+  if(pin===null)return;
+  if(pin.trim().length<4)return alert('PIN musi mieć minimum 4 znaki.');
+  try{
+    await rpc('piker_admin_driver_pin',{p_admin_pin:adminSessionPin,p_driver_id:id,p_new_pin:pin.trim()});
+    alert('PIN został zmieniony.');
+  }catch(e){console.error(e);alert('Nie udało się zmienić PIN-u.')}
+};
+
+window.vehicleStatus=async(id,status)=>{
+  try{
+    await rpc('piker_admin_vehicle_status',{p_admin_pin:adminSessionPin,p_vehicle_id:id,p_status:status});
+    await renderAdmin();
+    if(currentDriver)await cloudVehicles();
+  }catch(e){console.error(e);alert('Nie udało się zmienić statusu pojazdu.')}
+};
+
+$('addDriver').onclick=async()=>{
+  const name=$('newDriverName').value.trim(),pin=$('newDriverPin').value.trim();
+  if(!name||pin.length<4)return alert('Podaj nazwę i PIN (minimum 4 znaki).');
+  try{
+    await rpc('piker_admin_add_driver',{p_admin_pin:adminSessionPin,p_name:name,p_pin:pin});
+    $('newDriverName').value='';$('newDriverPin').value='';
+    await renderAdmin();
+  }catch(e){console.error(e);alert('Nie udało się dodać kierowcy.')}
+};
+
+$('addVehicle').onclick=async()=>{
+  const name=$('newVehicle').value.trim(),registration=$('newRegistration').value.trim();
+  if(!name)return alert('Podaj nazwę pojazdu.');
+  try{
+    await rpc('piker_admin_add_vehicle',{p_admin_pin:adminSessionPin,p_name:name,p_registration:registration});
+    $('newVehicle').value='';$('newRegistration').value='';
+    await renderAdmin();
+  }catch(e){console.error(e);alert('Nie udało się dodać pojazdu.')}
+};
+try{const s=JSON.parse(localStorage.getItem(STATE)||'null');if(s){tariffId=s.tariffId||1;running=!!s.running;finished=!!s.finished;lastPoint=s.lastPoint;startPoint=s.startPoint;endPoint=s.endPoint;km=+s.km||0;startedAt=s.startedAt;const d=s.currentDriver;if(d){showDriver(d);loadVehicles(s.vehicleId);if(running){tick();timerId=setInterval(tick,1000);startGpsWatch()}sync()}}}catch(e){}update();sync();
 </script></body></html>
